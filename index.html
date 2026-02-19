@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Kildear Office</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.9);
+            border: 2px solid #222;
+            box-shadow: 0 0 15px #00aaff;
+            z-index: 150;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="crosshair"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+        // --- Сцена ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111122);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(5, 1.8, 8);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new PointerLockControls(camera, document.body);
+        scene.add(controls.getObject());
+
+        // Захват мыши по клику (без текстовых подсказок)
+        document.addEventListener('click', () => controls.lock());
+
+        const keyState = { w: false, a: false, s: false, d: false };
+        document.addEventListener('keydown', (e) => {
+            switch(e.code) {
+                case 'KeyW': keyState.w = true; e.preventDefault(); break;
+                case 'KeyA': keyState.a = true; e.preventDefault(); break;
+                case 'KeyS': keyState.s = true; e.preventDefault(); break;
+                case 'KeyD': keyState.d = true; e.preventDefault(); break;
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            switch(e.code) {
+                case 'KeyW': keyState.w = false; e.preventDefault(); break;
+                case 'KeyA': keyState.a = false; e.preventDefault(); break;
+                case 'KeyS': keyState.s = false; e.preventDefault(); break;
+                case 'KeyD': keyState.d = false; e.preventDefault(); break;
+            }
+        });
+
+        // --- Освещение ---
+        const ambient = new THREE.AmbientLight(0x40406b);
+        scene.add(ambient);
+        const dirLight = new THREE.DirectionalLight(0xfff5e0, 1.5);
+        dirLight.position.set(8, 12, 10);
+        dirLight.castShadow = true;
+        dirLight.receiveShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        const d = 15;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        scene.add(dirLight);
+        const pointLight1 = new THREE.PointLight(0x4466cc, 1.2, 20);
+        pointLight1.position.set(-5, 3, -5);
+        scene.add(pointLight1);
+        const pointLight2 = new THREE.PointLight(0xcc8844, 0.8, 20);
+        pointLight2.position.set(6, 4, 6);
+        scene.add(pointLight2);
+
+        // --- Текстуры ---
+        const loader = new THREE.TextureLoader();
+        const floorTex = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/hardwood2_diffuse.jpg');
+        floorTex.wrapS = THREE.RepeatWrapping;
+        floorTex.wrapT = THREE.RepeatWrapping;
+        floorTex.repeat.set(4, 4);
+        const floorNorm = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/hardwood2_bump.jpg');
+        floorNorm.wrapS = THREE.RepeatWrapping;
+        floorNorm.wrapT = THREE.RepeatWrapping;
+        floorNorm.repeat.set(4, 4);
+
+        const wallTex = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/brick_diffuse.jpg');
+        wallTex.wrapS = THREE.RepeatWrapping;
+        wallTex.wrapT = THREE.RepeatWrapping;
+        wallTex.repeat.set(2, 2);
+        const wallNorm = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/brick_bump.jpg');
+        wallNorm.wrapS = THREE.RepeatWrapping;
+        wallNorm.wrapT = THREE.RepeatWrapping;
+        wallNorm.repeat.set(2, 2);
+
+        const woodTex = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/wood/ash_floor.jpg');
+        woodTex.wrapS = THREE.RepeatWrapping;
+        woodTex.wrapT = THREE.RepeatWrapping;
+        woodTex.repeat.set(2, 1);
+        const woodNorm = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/wood/ash_floor_bump.jpg');
+        woodNorm.wrapS = THREE.RepeatWrapping;
+        woodNorm.wrapT = THREE.RepeatWrapping;
+        woodNorm.repeat.set(2, 1);
+
+        const metalTex = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/steel/steel-scratched.jpg');
+        metalTex.wrapS = THREE.RepeatWrapping;
+        metalTex.wrapT = THREE.RepeatWrapping;
+        metalTex.repeat.set(1, 1);
+
+        const fabricTex = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/terrain/grasslight-high.jpg');
+        fabricTex.wrapS = THREE.RepeatWrapping;
+        fabricTex.wrapT = THREE.RepeatWrapping;
+        fabricTex.repeat.set(2, 2);
+        const fabricNorm = loader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/terrain/grasslight-high.jpg');
+        fabricNorm.wrapS = THREE.RepeatWrapping;
+        fabricNorm.wrapT = THREE.RepeatWrapping;
+        fabricNorm.repeat.set(2, 2);
+
+        // --- Пол и потолок ---
+        const floorMat = new THREE.MeshStandardMaterial({ map: floorTex, normalMap: floorNorm, roughness: 0.6, metalness: 0.1 });
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = 0;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        const ceilingMat = new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
+        const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), ceilingMat);
+        ceiling.rotation.x = -Math.PI / 2;
+        ceiling.position.y = 4;
+        scene.add(ceiling);
+
+        // --- Стены и перегородки ---
+        const collidables = [];
+        function addCollisionBox(posX, posY, posZ, w, h, d) {
+            collidables.push({ minX: posX - w/2, maxX: posX + w/2, minY: posY - h/2, maxY: posY + h/2, minZ: posZ - d/2, maxZ: posZ + d/2 });
+        }
+
+        function createWall(width, height, depth, posX, posY, posZ, rotY = 0, texture = wallTex, normal = wallNorm) {
+            const geo = new THREE.BoxGeometry(width, height, depth);
+            const mat = new THREE.MeshStandardMaterial({ map: texture, normalMap: normal, roughness: 0.8 });
+            const wall = new THREE.Mesh(geo, mat);
+            wall.position.set(posX, posY, posZ);
+            wall.rotation.y = rotY;
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            scene.add(wall);
+            addCollisionBox(posX, posY, posZ, width, height, depth);
+        }
+
+        // Внешние стены
+        createWall(20, 4, 0.5, 0, 2, -10);
+        createWall(20, 4, 0.5, 0, 2, 10);
+        createWall(0.5, 4, 20, -10, 2, 0);
+        createWall(0.5, 4, 20, 10, 2, 0);
+
+        // Внутренние перегородки с дверными проёмами
+        createWall(0.5, 4, 7, 0, 2, -6.5);
+        createWall(0.5, 4, 7, 0, 2, 6.5);
+        createWall(7, 4, 0.5, -6.5, 2, 0);
+        createWall(7, 4, 0.5, 6.5, 2, 0);
+
+        // --- Комната 1: Компьютерная (4 ПК, расставлены просторнее) ---
+        function createComputerSet(x, z) {
+            const deskMat = new THREE.MeshStandardMaterial({ map: woodTex, normalMap: woodNorm, roughness: 0.5, metalness: 0.1 });
+            const desk = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 1.5), deskMat);
+            desk.position.set(x, 0.75, z);
+            desk.castShadow = true;
+            desk.receiveShadow = true;
+            scene.add(desk);
+            addCollisionBox(x, 0.75, z, 2, 0.1, 1.5);
+
+            const legMat = new THREE.MeshStandardMaterial({ map: metalTex, color: 0xcccccc, metalness: 0.9, roughness: 0.3 });
+            const legPositions = [
+                [x - 0.9, 0.35, z - 0.6],
+                [x + 0.9, 0.35, z - 0.6],
+                [x - 0.9, 0.35, z + 0.6],
+                [x + 0.9, 0.35, z + 0.6]
+            ];
+            legPositions.forEach(pos => {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.7, 0.15), legMat);
+                leg.position.set(pos[0], pos[1], pos[2]);
+                leg.castShadow = true;
+                leg.receiveShadow = true;
+                scene.add(leg);
+                addCollisionBox(pos[0], pos[1], pos[2], 0.15, 0.7, 0.15);
+            });
+
+            const towerMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.5, roughness: 0.4 });
+            const tower = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.6, 0.4), towerMat);
+            tower.position.set(x - 0.8, 0.4, z + 0.3);
+            tower.castShadow = true;
+            tower.receiveShadow = true;
+            scene.add(tower);
+            addCollisionBox(x - 0.8, 0.4, z + 0.3, 0.4, 0.6, 0.4);
+
+            const monitorBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.1, 0.2), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+            monitorBase.position.set(x, 0.95, z - 0.2);
+            monitorBase.castShadow = true;
+            monitorBase.receiveShadow = true;
+            scene.add(monitorBase);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#0a1a2a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.font = 'bold 24px "Courier New"';
+            ctx.fillStyle = '#00ffaa';
+            ctx.fillText('KILDEAR OS', 30, 80);
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#88aaff';
+            ctx.fillText('> connected', 40, 140);
+            ctx.fillText('> messenger', 40, 180);
+            ctx.fillStyle = '#ffaa00';
+            ctx.fillRect(30, 200, 20, 20);
+            ctx.fillStyle = '#00aaff';
+            ctx.fillRect(70, 200, 20, 20);
+
+            const screenTex = new THREE.CanvasTexture(canvas);
+            const screenMat = new THREE.MeshStandardMaterial({ map: screenTex, emissive: 0x224466, emissiveIntensity: 0.5 });
+            const screen = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.4, 0.05), screenMat);
+            screen.position.set(x, 1.15, z - 0.22);
+            screen.castShadow = true;
+            screen.receiveShadow = true;
+            scene.add(screen);
+
+            const kbMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+            const kb = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.25), kbMat);
+            kb.position.set(x, 0.85, z + 0.1);
+            kb.castShadow = true;
+            kb.receiveShadow = true;
+            scene.add(kb);
+
+            const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.05, 0.1), kbMat);
+            mouse.position.set(x + 0.4, 0.85, z + 0.2);
+            mouse.castShadow = true;
+            mouse.receiveShadow = true;
+            scene.add(mouse);
+
+            const chairMat = new THREE.MeshStandardMaterial({ map: fabricTex, normalMap: fabricNorm, color: 0x3a4a5a });
+            const chair = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.5, 0.6), chairMat);
+            chair.position.set(x, 0.35, z + 0.8);
+            chair.castShadow = true;
+            chair.receiveShadow = true;
+            scene.add(chair);
+            addCollisionBox(x, 0.35, z + 0.8, 0.6, 0.5, 0.6);
+        }
+
+        createComputerSet(-6, -6);
+        createComputerSet(-6, -3);
+        createComputerSet(-3, -6);
+        createComputerSet(-3, -3);
+
+        // --- Надпись Kildear в компьютерной зоне (оставлена, это часть интерьера) ---
+        const kildearCanvas = document.createElement('canvas');
+        kildearCanvas.width = 512;
+        kildearCanvas.height = 256;
+        const kCtx = kildearCanvas.getContext('2d');
+        kCtx.fillStyle = '#1a2a3a';
+        kCtx.fillRect(0, 0, kildearCanvas.width, kildearCanvas.height);
+        kCtx.font = 'Bold 60px "Segoe UI", Arial';
+        kCtx.fillStyle = '#ffaa33';
+        kCtx.textAlign = 'center';
+        kCtx.textBaseline = 'middle';
+        kCtx.fillText('KILDEAR', 256, 80);
+        kCtx.font = '30px "Segoe UI", Arial';
+        kCtx.fillStyle = '#88aaff';
+        kCtx.fillText('computer zone', 256, 160);
+        const kildearTex = new THREE.CanvasTexture(kildearCanvas);
+        const kildearMat = new THREE.MeshStandardMaterial({ map: kildearTex, side: THREE.DoubleSide, emissive: 0x112233 });
+        const kildearSign = new THREE.Mesh(new THREE.PlaneGeometry(3, 1.5), kildearMat);
+        kildearSign.position.set(-5, 2.5, -9.9);
+        scene.add(kildearSign);
+
+        // --- Комната 2: Отдых + бильярдный стол ---
+        const sofaMat = new THREE.MeshStandardMaterial({ map: fabricTex, normalMap: fabricNorm, color: 0x8a6a8a, roughness: 0.7 });
+        const sofaBase = new THREE.Mesh(new THREE.BoxGeometry(3, 1, 1.2), sofaMat);
+        sofaBase.position.set(5, 0.6, -5);
+        sofaBase.castShadow = true;
+        sofaBase.receiveShadow = true;
+        scene.add(sofaBase);
+        addCollisionBox(5, 0.6, -5, 3, 1, 1.2);
+
+        const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 0.5), sofaMat);
+        sofaBack.position.set(5, 1.2, -4.4);
+        sofaBack.castShadow = true;
+        sofaBack.receiveShadow = true;
+        scene.add(sofaBack);
+        addCollisionBox(5, 1.2, -4.4, 3, 1.2, 0.5);
+
+        const tableMat = new THREE.MeshStandardMaterial({ map: woodTex, normalMap: woodNorm });
+        const table = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 1), tableMat);
+        table.position.set(5, 0.3, -7);
+        table.castShadow = true;
+        table.receiveShadow = true;
+        scene.add(table);
+        addCollisionBox(5, 0.3, -7, 1.5, 0.2, 1);
+
+        const tvBody = new THREE.Mesh(new THREE.BoxGeometry(2, 1.2, 0.3), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.6, roughness: 0.4 }));
+        tvBody.position.set(5, 1.5, -9.8);
+        tvBody.castShadow = true;
+        tvBody.receiveShadow = true;
+        scene.add(tvBody);
+        addCollisionBox(5, 1.5, -9.8, 2, 1.2, 0.3);
+
+        const tvCanvas = document.createElement('canvas');
+        tvCanvas.width = 512;
+        tvCanvas.height = 256;
+        const tCtx = tvCanvas.getContext('2d');
+        tCtx.fillStyle = '#001122';
+        tCtx.fillRect(0, 0, tvCanvas.width, tvCanvas.height);
+        tCtx.font = 'bold 40px Arial';
+        tCtx.fillStyle = '#ffaa00';
+        tCtx.fillText('KILDEAR NEWS', 70, 100);
+        tCtx.font = '20px Arial';
+        tCtx.fillStyle = '#88ff88';
+        tCtx.fillText('New office textures!', 120, 170);
+        const tvTex = new THREE.CanvasTexture(tvCanvas);
+        const tvScreenMat = new THREE.MeshStandardMaterial({ map: tvTex, emissive: 0x224466 });
+        const tvScreen = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 0.05), tvScreenMat);
+        tvScreen.position.set(5, 1.5, -9.65);
+        tvScreen.castShadow = true;
+        scene.add(tvScreen);
+
+        // Бильярдный стол
+        function createBilliardTable(x, z) {
+            const baseMat = new THREE.MeshStandardMaterial({ color: 0x2a5a2a });
+            const base = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.3, 1.8), baseMat);
+            base.position.set(x, 0.25, z);
+            base.castShadow = true;
+            base.receiveShadow = true;
+            scene.add(base);
+            addCollisionBox(x, 0.25, z, 2.5, 0.3, 1.8);
+
+            const clothMat = new THREE.MeshStandardMaterial({ color: 0x1a7a1a });
+            const cloth = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.1, 1.7), clothMat);
+            cloth.position.set(x, 0.45, z);
+            cloth.castShadow = true;
+            cloth.receiveShadow = true;
+            scene.add(cloth);
+
+            const railMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
+            const railLength = 2.5;
+            const railWidth = 0.15;
+            const railHeight = 0.2;
+            const rail1 = new THREE.Mesh(new THREE.BoxGeometry(railLength, railHeight, railWidth), railMat);
+            rail1.position.set(x, 0.55, z - 0.9);
+            rail1.castShadow = true;
+            rail1.receiveShadow = true;
+            scene.add(rail1);
+            const rail2 = new THREE.Mesh(new THREE.BoxGeometry(railLength, railHeight, railWidth), railMat);
+            rail2.position.set(x, 0.55, z + 0.9);
+            rail2.castShadow = true;
+            rail2.receiveShadow = true;
+            scene.add(rail2);
+            const rail3 = new THREE.Mesh(new THREE.BoxGeometry(railWidth, railHeight, 1.8), railMat);
+            rail3.position.set(x - 1.2, 0.55, z);
+            rail3.castShadow = true;
+            rail3.receiveShadow = true;
+            scene.add(rail3);
+            const rail4 = new THREE.Mesh(new THREE.BoxGeometry(railWidth, railHeight, 1.8), railMat);
+            rail4.position.set(x + 1.2, 0.55, z);
+            rail4.castShadow = true;
+            rail4.receiveShadow = true;
+            scene.add(rail4);
+
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+            const legPos = [[x-1.1, 0.1, z-0.8], [x+1.1, 0.1, z-0.8], [x-1.1, 0.1, z+0.8], [x+1.1, 0.1, z+0.8]];
+            legPos.forEach(pos => {
+                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.3, 8), legMat);
+                leg.position.set(pos[0], pos[1], pos[2]);
+                leg.castShadow = true;
+                leg.receiveShadow = true;
+                scene.add(leg);
+            });
+
+            const sphereMat = new THREE.MeshStandardMaterial({ color: 0xffaa33, emissive: 0x331100 });
+            const spherePos = [[x-0.5, 0.55, z-0.3], [x, 0.55, z], [x+0.4, 0.55, z+0.2]];
+            spherePos.forEach(([sx, sy, sz]) => {
+                const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16), sphereMat);
+                sphere.position.set(sx, sy, sz);
+                sphere.castShadow = true;
+                sphere.receiveShadow = true;
+                scene.add(sphere);
+            });
+        }
+        createBilliardTable(7, -3);
+
+        // --- Комната 3: пустая ---
+
+        // --- Комната 4: Серверная с тремя серверами ---
+        function createServerRack(x, z, label = null) {
+            const rackMat = new THREE.MeshStandardMaterial({ map: metalTex, color: 0x333333, metalness: 0.8, roughness: 0.2 });
+            const rack = new THREE.Mesh(new THREE.BoxGeometry(1, 2.5, 1.2), rackMat);
+            rack.position.set(x, 1.25, z);
+            rack.castShadow = true;
+            rack.receiveShadow = true;
+            scene.add(rack);
+            addCollisionBox(x, 1.25, z, 1, 2.5, 1.2);
+
+            const indColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00];
+            for (let i = 0; i < 4; i++) {
+                const ind = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshStandardMaterial({ color: indColors[i], emissive: indColors[i] }));
+                ind.position.set(x - 0.4 + i*0.2, 2.0, z + 0.65);
+                ind.castShadow = true;
+                scene.add(ind);
+            }
+
+            if (label) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.font = 'bold 24px Arial';
+                ctx.fillStyle = '#00ffaa';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, 128, 64);
+                const tex = new THREE.CanvasTexture(canvas);
+                const mat = new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, emissive: 0x224466 });
+                const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.4), mat);
+                sign.position.set(x, 2.8, z + 0.65);
+                sign.castShadow = true;
+                scene.add(sign);
+            }
+        }
+
+        createServerRack(3, 3);
+        createServerRack(6, 3, 'KILDEAR GPT 2.0');
+        createServerRack(4.5, 6);
+
+        const soonCanvas = document.createElement('canvas');
+        soonCanvas.width = 256;
+        soonCanvas.height = 128;
+        const sCtx = soonCanvas.getContext('2d');
+        sCtx.fillStyle = '#330000';
+        sCtx.fillRect(0, 0, soonCanvas.width, soonCanvas.height);
+        sCtx.font = 'bold 32px Arial';
+        sCtx.fillStyle = '#ffaa33';
+        sCtx.textAlign = 'center';
+        sCtx.fillText('СКОРО', 128, 64);
+        const soonTex = new THREE.CanvasTexture(soonCanvas);
+        const soonMat = new THREE.MeshStandardMaterial({ map: soonTex, side: THREE.DoubleSide, emissive: 0x331100 });
+        const soonSign = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.5), soonMat);
+        soonSign.position.set(5.5, 2.2, 6.5);
+        soonSign.castShadow = true;
+        scene.add(soonSign);
+
+        function createMonitoringComputer(x, z) {
+            const deskMat = new THREE.MeshStandardMaterial({ map: woodTex, normalMap: woodNorm, roughness: 0.5 });
+            const desk = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.1, 1), deskMat);
+            desk.position.set(x, 0.75, z);
+            desk.castShadow = true;
+            desk.receiveShadow = true;
+            scene.add(desk);
+            addCollisionBox(x, 0.75, z, 1.5, 0.1, 1);
+
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.7 });
+            [[x-0.6, 0.35, z-0.4], [x+0.6, 0.35, z-0.4], [x-0.6, 0.35, z+0.4], [x+0.6, 0.35, z+0.4]].forEach(pos => {
+                const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.7, 0.12), legMat);
+                leg.position.set(pos[0], pos[1], pos[2]);
+                leg.castShadow = true;
+                leg.receiveShadow = true;
+                scene.add(leg);
+                addCollisionBox(pos[0], pos[1], pos[2], 0.12, 0.7, 0.12);
+            });
+
+            const monitorBase = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.2), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+            monitorBase.position.set(x, 0.95, z - 0.2);
+            monitorBase.castShadow = true;
+            monitorBase.receiveShadow = true;
+            scene.add(monitorBase);
+
+            const screenMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x224466 });
+            const screen = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.35, 0.05), screenMat);
+            screen.position.set(x, 1.15, z - 0.22);
+            screen.castShadow = true;
+            screen.receiveShadow = true;
+            scene.add(screen);
+
+            const kb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.2), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+            kb.position.set(x, 0.85, z + 0.1);
+            kb.castShadow = true;
+            kb.receiveShadow = true;
+            scene.add(kb);
+
+            const chair = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: 0x3a4a5a }));
+            chair.position.set(x, 0.35, z + 0.6);
+            chair.castShadow = true;
+            chair.receiveShadow = true;
+            scene.add(chair);
+            addCollisionBox(x, 0.35, z + 0.6, 0.5, 0.5, 0.5);
+        }
+        createMonitoringComputer(4.5, 7);
+
+        // --- Логотип Kildear на центральной стене (оставлен как часть интерьера) ---
+        const logoCanvas = document.createElement('canvas');
+        logoCanvas.width = 512;
+        logoCanvas.height = 256;
+        const lCtx = logoCanvas.getContext('2d');
+        lCtx.fillStyle = '#1a2a3a';
+        lCtx.fillRect(0, 0, logoCanvas.width, logoCanvas.height);
+        lCtx.font = 'Bold 80px "Segoe UI", Arial';
+        lCtx.fillStyle = '#ffaa33';
+        lCtx.shadowColor = '#000';
+        lCtx.shadowBlur = 15;
+        lCtx.textAlign = 'center';
+        lCtx.textBaseline = 'middle';
+        lCtx.fillText('KILDEAR', logoCanvas.width/2, logoCanvas.height/2 - 20);
+        lCtx.font = '40px "Segoe UI", Arial';
+        lCtx.fillStyle = '#ccddff';
+        lCtx.shadowBlur = 10;
+        lCtx.fillText('messenger & more', logoCanvas.width/2, logoCanvas.height/2 + 40);
+        const logoTexture = new THREE.CanvasTexture(logoCanvas);
+        const logoMat = new THREE.MeshStandardMaterial({ map: logoTexture, side: THREE.DoubleSide, emissive: 0x112233 });
+        const logoPlane = new THREE.Mesh(new THREE.PlaneGeometry(4, 2), logoMat);
+        logoPlane.position.set(0, 2.5, -9.9);
+        scene.add(logoPlane);
+
+        // --- Лампочки под потолком ---
+        const bulbMat = new THREE.MeshStandardMaterial({ color: 0xffeedd, emissive: 0xffaa55 });
+        const bulbPos = [[-7,3.8,-7], [-3,3.8,-3], [3,3.8,-5], [7,3.8,-7], [-5,3.8,5], [5,3.8,5], [-2,3.8,8], [6,3.8,2]];
+        bulbPos.forEach(pos => {
+            const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16), bulbMat);
+            bulb.position.set(pos[0], pos[1], pos[2]);
+            bulb.castShadow = true;
+            scene.add(bulb);
+        });
+
+        // --- Движение с коллизиями ---
+        const moveSpeed = 5.0;
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (controls.isLocked) {
+                const cameraObj = controls.getObject();
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cameraObj.quaternion);
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cameraObj.quaternion);
+                forward.y = 0;
+                right.y = 0;
+                forward.normalize();
+                right.normalize();
+
+                const moveDir = new THREE.Vector3(0, 0, 0);
+                if (keyState.w) moveDir.add(forward);
+                if (keyState.s) moveDir.sub(forward);
+                if (keyState.d) moveDir.add(right);
+                if (keyState.a) moveDir.sub(right);
+
+                if (moveDir.lengthSq() > 0) {
+                    moveDir.normalize();
+                    const step = moveDir.multiplyScalar(moveSpeed * 0.016);
+
+                    const newPosX = cameraObj.position.x + step.x;
+                    const newPosZ = cameraObj.position.z + step.z;
+
+                    let canMoveX = true, canMoveZ = true;
+                    const pad = 0.3;
+
+                    for (let box of collidables) {
+                        if (newPosX + pad > box.minX && newPosX - pad < box.maxX &&
+                            cameraObj.position.y + 0.5 > box.minY && cameraObj.position.y - 0.5 < box.maxY &&
+                            cameraObj.position.z + pad > box.minZ && cameraObj.position.z - pad < box.maxZ) {
+                            canMoveX = false;
+                        }
+                        if (cameraObj.position.x + pad > box.minX && cameraObj.position.x - pad < box.maxX &&
+                            cameraObj.position.y + 0.5 > box.minY && cameraObj.position.y - 0.5 < box.maxY &&
+                            newPosZ + pad > box.minZ && newPosZ - pad < box.maxZ) {
+                            canMoveZ = false;
+                        }
+                    }
+
+                    if (canMoveX) cameraObj.position.x += step.x;
+                    if (canMoveZ) cameraObj.position.z += step.z;
+                    if (cameraObj.position.y < 0.5) cameraObj.position.y = 1.7;
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
